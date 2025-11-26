@@ -242,7 +242,10 @@ def register_survey():
 
     df = load_data()
 
-    user_id = st.text_input("닉네임 또는 ID (유일하게 구분 가능한 이름)", max_chars=30)
+    # 세션에 저장된 user_id가 있으면 기본값으로
+    default_id = st.session_state.get("user_id", "")
+    user_id = st.text_input("닉네임 또는 ID (유일하게 구분 가능한 이름)", max_chars=30, value=default_id)
+
     prev = None
     if user_id and user_id in df["user_id"].values:
         prev = df[df["user_id"] == user_id].iloc[0]
@@ -307,6 +310,7 @@ def register_survey():
         self_gender_default = get_prev(prev, "self_gender", "여성")
         self_body_type_default = get_prev(prev, "self_body_type", "보통")
         self_mbti_default = get_prev(prev, "self_mbti", "")
+        contact_default = get_prev(prev, "contact_info", "")
 
         self_age = st.number_input("나이", 10, 100, self_age_default)
         self_gender = st.selectbox(
@@ -337,6 +341,10 @@ def register_survey():
             appearance_base,
             index=appearance_base.index(self_appearance_default) if self_appearance_default in appearance_base else 0
         )
+
+    st.markdown("##### 📞 연락처 (선택)")
+    st.write("인스타 ID / 이메일 / 카카오 오픈채팅 링크 등. 최종 매칭된 사람에게만 공개됩니다.")
+    contact_info = st.text_input("연락처", max_chars=100, value=contact_default)
 
     st.markdown("---")
     st.subheader("4. 내가 원하는 상대")
@@ -409,6 +417,9 @@ def register_survey():
             st.error("닉네임 또는 ID를 반드시 입력해 주세요.")
             return
 
+        # 세션에 현재 닉네임 저장 → 다른 탭에서 자동 사용
+        st.session_state["user_id"] = user_id
+
         # 기존 user_id 응답 삭제 후 새로 저장
         df = df[df["user_id"] != user_id]
 
@@ -437,7 +448,7 @@ def register_survey():
             "pref_max_height": pref_max_height,
             "blacklist_personality": ";".join(blacklist_personality),
             "blacklist_appearance": ";".join(blacklist_appearance),
-            "contact_info": get_prev(prev, "contact_info", "")
+            "contact_info": contact_info
         }
 
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
@@ -451,11 +462,16 @@ def register_survey():
 def show_match_page():
     st.subheader("매칭 결과 보기")
 
-    user_id = st.text_input("내 닉네임 또는 ID 입력", key="match_user_id")
-    max_results = st.slider("최대 몇 명까지 보고 싶나요?", 1, 20, 5)
+    # 세션에 저장된 ID 사용
+    session_id = st.session_state.get("user_id", "")
+    if session_id:
+        st.info(f"현재 로그인된 닉네임: **{session_id}** (닉네임은 '설문 참여' 탭에서 변경 가능)")
+        user_id = session_id
+    else:
+        user_id = st.text_input("내 닉네임 또는 ID 입력", key="match_user_id")
 
     if not user_id:
-        st.info("매칭을 보려면 먼저 상단에 내 ID를 입력해 주세요.")
+        st.info("매칭을 보려면 먼저 닉네임(ID)을 입력하거나 설문을 저장해 주세요.")
         return
 
     df = load_data()
@@ -467,6 +483,9 @@ def show_match_page():
         st.error("해당 ID로 저장된 설문이 없습니다. 철자 또는 대소문자를 확인해 주세요.")
         return
 
+    # 설문에서 바로 들어온 경우 세션에 ID 저장
+    st.session_state["user_id"] = user_id
+
     me = df[df["user_id"] == user_id].iloc[0]
     others = df[df["user_id"] != user_id].copy()
 
@@ -475,6 +494,8 @@ def show_match_page():
         return
 
     decisions = load_decisions()
+
+    max_results = st.slider("최대 몇 명까지 보고 싶나요?", 1, 20, 5)
 
     # 점수 계산
     scores = []
@@ -567,7 +588,7 @@ def show_match_page():
                         decisions = pd.concat([decisions, pd.DataFrame([new_dec])], ignore_index=True)
                         save_decisions(decisions)
                         st.success("수락으로 저장되었습니다. 알림 탭에서 최종 매칭을 확인할 수 있어요.")
-                        st.experimental_rerun()
+                        st.rerun()
                 with col_b:
                     if st.button("🙅‍♀️ 패스 (거절)", key=f"reject_{partner_id}"):
                         decisions = load_decisions()
@@ -586,7 +607,7 @@ def show_match_page():
                         decisions = pd.concat([decisions, pd.DataFrame([new_dec])], ignore_index=True)
                         save_decisions(decisions)
                         st.warning("거절로 저장되었습니다. 이 상대와는 매칭되지 않습니다.")
-                        st.experimental_rerun()
+                        st.rerun()
 
 
 # ------------------------------
@@ -595,10 +616,15 @@ def show_match_page():
 def show_notifications_page():
     st.subheader("알림 / 최종 매칭 결과 확인")
 
-    user_id = st.text_input("내 닉네임 또는 ID 입력", key="notify_user_id")
+    session_id = st.session_state.get("user_id", "")
+    if session_id:
+        st.info(f"현재 로그인된 닉네임: **{session_id}** (닉네임은 '설문 참여' 탭에서 변경 가능)")
+        user_id = session_id
+    else:
+        user_id = st.text_input("내 닉네임 또는 ID 입력", key="notify_user_id")
 
     if not user_id:
-        st.info("알림을 확인하려면 먼저 내 ID를 입력해 주세요.")
+        st.info("알림을 확인하려면 먼저 닉네임(ID)을 입력하거나 설문을 저장해 주세요.")
         return
 
     df = load_data()
@@ -606,14 +632,22 @@ def show_notifications_page():
         st.error("해당 ID로 저장된 설문이 없습니다. 먼저 '설문 참여'에서 설문을 저장해 주세요.")
         return
 
+    # 세션에 ID 저장
+    st.session_state["user_id"] = user_id
+
     decisions = load_decisions()
     ratings = load_ratings()
 
     # 내 매너온도
     my_mt = get_user_manner_temperature(user_id)
-    st.info(f"현재 내 매너온도는 **{my_mt}°** 입니다.")
-
     me = df[df["user_id"] == user_id].iloc[0]
+    my_contact = me["contact_info"] if isinstance(me["contact_info"], str) else ""
+
+    st.info(f"현재 내 매너온도는 **{my_mt}°** 입니다.")
+    if my_contact:
+        st.write(f"📞 현재 등록된 내 연락처: **{my_contact}** (수정은 '설문 참여' 탭에서 가능)")
+    else:
+        st.write("📞 아직 등록된 연락처가 없습니다. '설문 참여' 탭에서 연락처를 추가할 수 있어요.")
 
     # ===== 상호 수락(최종 매칭) 계산 =====
     accepts = decisions[decisions["decision"] == "수락"]
@@ -629,23 +663,6 @@ def show_notifications_page():
     # ===== 나를 수락한 사람들 (한쪽만 수락해도) =====
     liked_me_ids_all = set(accepts[accepts["to_user"] == user_id]["from_user"])
     liked_me_only = liked_me_ids_all - mutual_ids
-
-    # --- 내 연락처 등록/수정 (최종 매칭 상대에게만 공개) ---
-    st.markdown("#### 📞 나의 연락처 등록 / 수정")
-    current_contact = me["contact_info"] if isinstance(me["contact_info"], str) else ""
-    new_contact = st.text_input(
-        "인스타그램 ID, 이메일, 카카오톡 오픈채팅 링크 등 (선택)",
-        value=current_contact,
-        max_chars=100,
-        key="my_contact_input"
-    )
-    if st.button("내 연락처 저장/업데이트"):
-        df.loc[df["user_id"] == user_id, "contact_info"] = new_contact
-        save_data(df)
-        st.success("내 연락처가 저장되었습니다. 최종 매칭된 상대가 이 정보를 볼 수 있습니다.")
-        st.experimental_rerun()
-
-    df = load_data()  # 최신 데이터 다시 로드
 
     # --- 최종 매칭 ---
     st.markdown("### ✅ 최종 매칭된 사람들")
@@ -718,7 +735,7 @@ def show_notifications_page():
                     ratings = pd.concat([ratings, pd.DataFrame([new_row])], ignore_index=True)
                     save_ratings(ratings)
                     st.success("별점이 저장되었습니다! 상대의 매너온도에 반영됩니다.")
-                    st.experimental_rerun()
+                    st.rerun()
 
     st.markdown("---")
     st.markdown("### 💌 나를 수락한 사람들 (아직 최종 매칭은 아닐 수 있음)")
@@ -756,6 +773,7 @@ def main():
         - 사진 대신 간단한 외모 카테고리와 키/체형만 사용합니다.
         - 학교/학원 같은 그룹을 설정하면 그 안에서만 매칭할 수 있습니다.
         - 매너온도는 내가 직접 입력하는 것이 아니라, 최종 매칭된 사람들이 남긴 별점의 평균으로 계산됩니다.
+        - 설문에서 닉네임을 한 번 입력하면, 다른 탭에서도 자동으로 동일한 닉네임을 사용합니다.
         """
     )
 
