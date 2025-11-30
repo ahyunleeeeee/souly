@@ -15,9 +15,7 @@ RATINGS_FILE = "ratings.csv"
 # 기본 유틸
 # ------------------------------
 def load_data():
-    if os.path.exists(DATA_FILE):
-        return pd.read_csv(DATA_FILE)
-    return pd.DataFrame(columns=[
+    base_cols = [
         "timestamp", "user_id", "purpose",
         "match_mode", "group_size",
         "group_scope", "group_name",
@@ -31,7 +29,17 @@ def load_data():
         "pref_min_height", "pref_max_height",
         "blacklist_personality", "blacklist_appearance",
         "contact_info"
-    ])
+    ]
+    all_cols = base_cols + ["team_code"]
+
+    if os.path.exists(DATA_FILE):
+        df = pd.read_csv(DATA_FILE)
+        # 새로 추가된 컬럼이 없으면 만들어 줌
+        if "team_code" not in df.columns:
+            df["team_code"] = ""
+        return df
+    else:
+        return pd.DataFrame(columns=all_cols)
 
 
 def save_data(df):
@@ -70,8 +78,8 @@ def split_tags(val):
 
 def get_user_manner_temperature(user_id: str) -> float:
     """
-    매너온도 = (해당 유저에게 들어온 별점 평균) * 20
-    별점이 하나도 없으면 50점으로 표시
+    매너온도 = (해당 유저에게 들어온 별점 평균) * 10
+    (별점 1~10점 → 10점 = 100°, 5점 = 50°)
     """
     df = load_ratings()
     if df.empty:
@@ -81,7 +89,7 @@ def get_user_manner_temperature(user_id: str) -> float:
     if len(user_ratings) == 0:
         return 50.0
 
-    return round(user_ratings.mean() * 20, 1)  # 5점 만점 → 100점 환산
+    return round(user_ratings.mean() * 10, 1)
 
 
 def get_prev(prev_row, col, default):
@@ -112,7 +120,26 @@ def calc_match_score(me, other):
     if me["purpose"] != other["purpose"]:
         return -1
 
-    # 2. 그룹 필터
+    # 2. 매칭 방식 다르면 제외
+    if me["match_mode"] != other["match_mode"]:
+        return -1
+
+    # 3. 다인원/팀 매칭일 경우 인원 수도 맞춰야 함
+    if me["match_mode"] != "1:1 매칭":
+        try:
+            if int(me["group_size"]) != int(other["group_size"]):
+                return -1
+        except Exception:
+            return -1
+
+    # 4. 팀 매칭일 경우 같은 팀 코드끼리는 매칭 금지
+    if "팀 매칭" in str(me["match_mode"]) and "팀 매칭" in str(other["match_mode"]):
+        me_code = str(me.get("team_code", "") or "").strip()
+        other_code = str(other.get("team_code", "") or "").strip()
+        if me_code and other_code and me_code == other_code:
+            return -1
+
+    # 5. 그룹(학교/학원 등) 필터
     if me["group_scope"] == "특정 그룹 내에서" and isinstance(me["group_name"], str) and me["group_name"].strip():
         if other["group_name"] != me["group_name"]:
             return -1
@@ -121,7 +148,7 @@ def calc_match_score(me, other):
         if me["group_name"] != other["group_name"]:
             return -1
 
-    # 3. 내 블랙리스트 (내 입장에서 상대 거르기)
+    # 6. 내 블랙리스트 (내 입장에서 상대 거르기)
     my_black_p = split_tags(me["blacklist_personality"])
     my_black_a = split_tags(me["blacklist_appearance"])
 
@@ -134,7 +161,6 @@ def calc_match_score(me, other):
         return -1
 
     # ===== 내가 원하는 조건 vs 상대 실제 =====
-
     # 나이
     if me["pref_min_age"] <= other["self_age"] <= me["pref_max_age"]:
         score += 10
@@ -239,13 +265,14 @@ def register_survey():
         st.success("기존 설문을 불러왔어요. 수정 후 다시 저장하면 업데이트됩니다.")
 
     purpose_options = ["친구", "연애", "스터디", "취미", "기타"]
-    match_mode_options = ["1:1 매칭", "다인원 매칭"]
+    match_mode_options = ["1:1 매칭", "다인원 매칭", "팀 매칭 (친구와 함께)"]
     group_scope_options = ["전체 공개", "특정 그룹 내에서"]
 
     purpose_default = get_prev(prev, "purpose", "친구")
     match_mode_default = get_prev(prev, "match_mode", "1:1 매칭")
     group_scope_default = get_prev(prev, "group_scope", "전체 공개")
     group_name_default = get_prev(prev, "group_name", "")
+    team_code_default = get_prev(prev, "team_code", "")
 
     col_top1, col_top2 = st.columns(2)
     with col_top1:
@@ -261,12 +288,43 @@ def register_survey():
             index=match_mode_options.index(match_mode_default) if match_mode_default in match_mode_options else 0
         )
 
-    prev_group_size = int(get_prev(prev, "group_size", 2))
+    # --- 매칭 인원 / 팀 코드 설정 ---
+    team_code = ""
     if match_mode == "1:1 매칭":
         group_size = 2
-    else:
-        group_size = st.slider("희망 모임 인원 (본인 포함)", 3, 10,
-                               prev_group_size if 3 <= prev_group_size <= 10 else 4)
+        st.caption("1:1 매칭에서는 자동으로 2명(나 + 상대)으로 설정됩니다.")
+    elif match_mode == "다인원 매칭":
+        prev_group_size = int(get_prev(prev, "group_size", 3))
+        if prev_group_size <= 3:
+            idx = 0
+        elif prev_group_size == 4:
+            idx = 1
+        else:
+            idx = 2
+        option_labels = ["3명 (나 포함)", "4명 (나 포함)", "5명 이상"]
+        choice = st.selectbox("희망 모임 인원 (본인 포함)", option_labels, index=idx)
+        if choice.startswith("3"):
+            group_size = 3
+        elif choice.startswith("4"):
+            group_size = 4
+        else:
+            group_size = 5
+        st.caption("다인원 매칭에서는 같은 인원 수를 선택한 사람들끼리 매칭돼요.")
+    else:  # 팀 매칭
+        team_col1, team_col2 = st.columns(2)
+        with team_col1:
+            prev_group_size = int(get_prev(prev, "group_size", 2))
+            size_options = [2, 3, 4, 5]
+            idx = size_options.index(prev_group_size) if prev_group_size in size_options else 0
+            group_size = st.selectbox("우리 팀 인원 (본인 포함)", size_options, index=idx)
+        with team_col2:
+            team_code = st.text_input(
+                "팀 코드 / 팀 이름 (친구들과 동일하게 입력)",
+                max_chars=20,
+                value=str(team_code_default),
+                help="같이 지원하는 친구들과 똑같이 적으면 한 팀으로 묶어서 2:2, 3:3 식으로 매칭할 수 있어요."
+            )
+        st.caption("팀 매칭에서는 같은 인원 수를 가진 다른 팀과만 매칭됩니다. (예: 2명 팀 ↔ 2명 팀)")
 
     st.markdown("---")
     st.markdown("#### 그룹 설정 (선택)")
@@ -401,7 +459,7 @@ def register_survey():
         default=[a for a in blacklist_appearance_default if a in appearance_base]
     )
 
-    st.info("매너온도는 내가 정하지 않고, 최종 매칭된 사람들이 남긴 별점으로 자동 계산됩니다.")
+    st.info("매너온도는 내가 정하지 않고, 최종 매칭된 사람들이 남긴 별점(1~10점)으로 자동 계산됩니다.")
 
     if st.button("프로필 저장하기", use_container_width=True):
         if not user_id:
@@ -436,7 +494,8 @@ def register_survey():
             "pref_max_height": pref_max_height,
             "blacklist_personality": ";".join(blacklist_personality),
             "blacklist_appearance": ";".join(blacklist_appearance),
-            "contact_info": contact_info
+            "contact_info": contact_info,
+            "team_code": team_code,
         }
 
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
@@ -685,17 +744,17 @@ def show_notifications_page():
                     st.info("상대가 아직 연락처를 등록하지 않았어요. 나중에 다시 확인해 보세요.")
 
                 st.write("---")
-                st.write("**매너 평가 (별점 1~5점)**")
+                st.write("**매너 평가 (별점 1~10점)**")
 
                 existing_rating = ratings[
                     (ratings["from_user"] == user_id) &
                     (ratings["to_user"] == pid)
                 ]
-                default_rating = int(existing_rating["rating"].iloc[0]) if not existing_rating.empty else 5
+                default_rating = int(existing_rating["rating"].iloc[0]) if not existing_rating.empty else 10
 
                 new_rating = st.slider(
                     "별점 선택",
-                    1, 5, default_rating,
+                    1, 10, default_rating,
                     key=f"rating_{pid}"
                 )
 
@@ -761,6 +820,7 @@ def show_guide_modal():
             "body": """
 - 닉네임을 정하면 나중에 다시 들어와도 그대로 로그인됩니다.
 - 사용 목적, 나이·성별·키·성격·외모타입·체형, 원하는 상대 조건을 차례로 입력해요.
+- **다인원 매칭**은 3명/4명/5명 이상, **팀 매칭**은 2~5명 팀으로 지원할 수 있어요.
 - 학교·학원·반 이름을 적으면 그 그룹 안에서만 매칭이 이루어집니다.
 - 연락처는 적어도 되고, 비워둬도 괜찮아요. 최종 매칭된 사람에게만 보여집니다.
 """
@@ -781,7 +841,7 @@ def show_guide_modal():
   · 나를 먼저 수락한 사람  
   · 서로 수락한 최종 매칭 상대  
   를 한 번에 확인할 수 있어요.
-- 최종 매칭된 상대의 연락처를 확인하고, 만남 후에는 1~5점 별점으로 매너를 평가합니다.
+- 최종 매칭된 상대의 연락처를 확인하고, 만남 후에는 **1~10점 별점**으로 매너를 평가합니다.
 - 이 별점의 평균이 그 사람의 **매너온도**가 되고,
   다음 매칭에서 신뢰도를 판단하는 기준이 됩니다.
 """
@@ -793,14 +853,7 @@ def show_guide_modal():
 
     st.markdown('<div class="guide-block">', unsafe_allow_html=True)
 
-    top_left, top_right = st.columns([9, 1])
-    with top_left:
-        st.markdown(f"**{info['title']}**")
-    with top_right:
-        if st.button("X", key="guide_close"):
-            st.session_state["guide_open"] = False
-            st.rerun()
-
+    st.markdown(f"**{info['title']}**")
     st.markdown(info["body"])
 
     prev_col, center_col, next_col = st.columns([2, 5, 3])
@@ -915,8 +968,7 @@ def main():
             margin-bottom: 16px;
             border: 1px solid #f4c6db;
         }
-
-        /* 슬라이더 색상 커스텀 (바 & 동그라미 핑크로) */
+        /* 슬라이더 색상 커스텀 */
         [data-testid="stSlider"] div[data-baseweb="slider"] > div > div:nth-child(2) {
             background-color: #f59ab3;
         }
