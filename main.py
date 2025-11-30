@@ -984,10 +984,49 @@ def main():
 
     st.markdown('<div class="main-block">', unsafe_allow_html=True)
 
-    st.markdown(
+       st.markdown(
         """
         <div class="hero-card">
-          <div class="hero-icon">♥</div>
+          <div class="hero-icon">
+            <svg width="80" height="80" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+              <!-- 바깥 둥근 사각형 -->
+              <rect x="8" y="8" width="104" height="104" rx="26"
+                    fill="#ffffff" stroke="#ffb7d5" stroke-width="4" />
+              <!-- 그라디언트 정의 -->
+              <defs>
+                <linearGradient id="heartGrad" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#ff5f8d"/>
+                  <stop offset="100%" stop-color="#ff8ec0"/>
+                </linearGradient>
+              </defs>
+              <!-- 왼쪽 하트 -->
+              <path d="
+                M60 36
+                C 55 28, 43 26, 36 33
+                C 29 40, 30 52, 38 60
+                L 60 82
+                Z"
+                fill="url(#heartGrad)"/>
+              <!-- 오른쪽 하트 -->
+              <path d="
+                M60 36
+                C 65 28, 77 26, 84 33
+                C 91 40, 90 52, 82 60
+                L 60 82
+                Z"
+                fill="url(#heartGrad)"/>
+              <!-- 좌우 반전된 S -->
+              <text x="60" y="68"
+                    text-anchor="middle"
+                    font-size="38"
+                    font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+                    fill="white"
+                    font-weight="700"
+                    transform="scale(-1,1) translate(-120,0)">
+                S
+              </text>
+            </svg>
+          </div>
           <div class="hero-text">
             <div class="hero-logo-word">souly</div>
             <p>친구 · 연애 · 모임까지, 설문 기반으로 나와 잘 맞는 사람을 찾아주는 매칭 서비스입니다.</p>
@@ -997,6 +1036,7 @@ def main():
         """,
         unsafe_allow_html=True,
     )
+
 
     # 온보딩 가이드
     show_guide_modal()
