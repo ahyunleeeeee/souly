@@ -975,7 +975,7 @@ def main():
             margin-bottom: 16px;
             border: 1px solid #f4c6db;
         }
-        /* 슬라이더 색상 (예전 버전처럼, 선택 구간/핸들만 핑크) */
+        /* 슬라이더 색상 (선택 구간/핸들만 핑크) */
         [data-testid="stSlider"] div[data-baseweb="slider"] > div > div:nth-child(2) {
             background-color: #f59ab3;
         }
@@ -1002,14 +1002,17 @@ def main():
         [data-testid="stRadio"] svg path {
             fill: #f59ab3;
         }
-        /* info/success/warning 알림 박스를 souly 톤으로 */
+        /* info/success/warning 알림 박스를 souly 파스텔 핑크로 */
         div[data-testid="stAlert"] {
-            border-radius: 14px;
-            background-color: #fff6fb;
-            border: 1px solid #f4c6db;
+            border-radius: 14px !important;
+            border: 1px solid #f4c6db !important;
+            background: transparent !important;
+        }
+        div[data-testid="stAlert"] > div {
+            background-color: #ffeaf3 !important;
         }
         div[data-testid="stAlert"] p {
-            color: #3d262c;
+            color: #3d262c !important;
         }
         </style>
         """,
