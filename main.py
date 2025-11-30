@@ -876,7 +876,7 @@ def main():
         <div class="hero-card">
           <div class="hero-icon">💗</div>
           <div class="hero-text">
-            <h1>HeartMatch</h1>
+            <h1>Souly</h1>
             <p>친구 · 연애 · 모임까지, 설문 기반으로 나와 잘 맞는 사람을 찾아주는 매칭 서비스</p>
             <p class="hero-tagline">사진 대신 성격 · 외모 타입 · 체형 정보만 사용해, 조금 더 안전하고 편안한 매칭을 지향해요.</p>
           </div>
@@ -904,3 +904,55 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# ===== 온보딩 모달 (처음 접속 시 표시) =====
+if "onboarding_shown" not in st.session_state:
+    st.session_state["onboarding_shown"] = False
+
+if not st.session_state["onboarding_shown"]:
+    st.markdown(
+        """
+        <style>
+        .onboard-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 380px;
+            background: white;
+            padding: 26px 30px;
+            border-radius: 22px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(255, 60, 120, 0.35);
+            z-index: 9999;
+            border: 2px solid #FFD6E8;
+        }
+        .onboard-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: #FF2E63;
+            margin-bottom: 10px;
+        }
+        .onboard-text {
+            font-size: 15px;
+            color: #333;
+            line-height: 1.45;
+            margin-bottom: 18px;
+        }
+        </style>
+        <div class="onboard-modal">
+            <div class="onboard-title">환영합니다! 💗</div>
+            <div class="onboard-text">
+                Souly는 성격과 취향 기반으로<br>
+                나와 잘 맞는 사람을 연결해주는 매칭 서비스예요.<br><br>
+                사진 없이 더 안전하고 편안한 매칭을 경험해보세요!
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if st.button("시작하기 💞", key="close_onboard"):
+        st.session_state["onboarding_shown"] = True
+        st.rerun()
+
