@@ -226,7 +226,7 @@ def calc_match_score(me, other):
 # 설문 페이지
 # ------------------------------
 def register_survey():
-    st.subheader("STEP 1 · 프로필 & 설문")
+    st.subheader("STEP 1 · 프로필 작성")
 
     df = load_data()
 
@@ -448,11 +448,11 @@ def register_survey():
 # 매칭 보기 페이지
 # ------------------------------
 def show_match_page():
-    st.subheader("STEP 2 · 매칭 찾기")
+    st.subheader("STEP 2 · 매칭 보기")
 
     session_id = st.session_state.get("user_id", "")
     if session_id:
-        st.info(f"현재 로그인된 닉네임: **{session_id}** (변경은 '프로필 & 설문' 탭)")
+        st.info(f"현재 로그인된 닉네임: **{session_id}** (변경은 '프로필 작성' 탭)")
         user_id = session_id
     else:
         user_id = st.text_input("내 닉네임 또는 ID 입력", key="match_user_id")
@@ -463,7 +463,7 @@ def show_match_page():
 
     df = load_data()
     if df.empty:
-        st.warning("아직 프로필 데이터가 없습니다. 먼저 '프로필 & 설문'에서 정보를 입력해 주세요.")
+        st.warning("아직 프로필 데이터가 없습니다. 먼저 '프로필 작성'에서 정보를 입력해 주세요.")
         return
 
     if user_id not in df["user_id"].values:
@@ -552,7 +552,7 @@ def show_match_page():
             st.write("**이 사람과의 매칭 여부**")
 
             if my_decision:
-                st.info(f"내 선택: **{my_decision}** (최종 결과는 '알림함'에서 확인할 수 있어요.)")
+                st.info(f"내 선택: **{my_decision}** (최종 결과는 '매칭 알림 & 매너온도' 탭에서 확인할 수 있어요.)")
             else:
                 col_a, col_b = st.columns(2)
                 with col_a:
@@ -572,7 +572,7 @@ def show_match_page():
                         }
                         decisions = pd.concat([decisions, pd.DataFrame([new_dec])], ignore_index=True)
                         save_decisions(decisions)
-                        st.success("수락으로 저장되었습니다. '알림함'에서 최종 매칭을 확인해 보세요.")
+                        st.success("수락으로 저장되었습니다. '매칭 알림 & 매너온도' 탭에서 최종 매칭을 확인해 보세요.")
                         st.rerun()
                 with col_b:
                     if st.button("패스할래요", key=f"reject_{partner_id}"):
@@ -599,7 +599,7 @@ def show_match_page():
 # 알림 / 최종 매칭 페이지
 # ------------------------------
 def show_notifications_page():
-    st.subheader("STEP 3 · 알림함 & 매너온도")
+    st.subheader("STEP 3 · 매칭 알림 & 매너온도")
 
     session_id = st.session_state.get("user_id", "")
     if session_id:
@@ -614,7 +614,7 @@ def show_notifications_page():
 
     df = load_data()
     if df.empty or user_id not in df["user_id"].values:
-        st.error("해당 ID로 저장된 프로필이 없습니다. 먼저 '프로필 & 설문'에서 프로필을 저장해 주세요.")
+        st.error("해당 ID로 저장된 프로필이 없습니다. 먼저 '프로필 작성' 탭에서 프로필을 저장해 주세요.")
         return
 
     st.session_state["user_id"] = user_id
@@ -630,7 +630,7 @@ def show_notifications_page():
     if my_contact:
         st.write(f"등록된 내 연락처: **{my_contact}**")
     else:
-        st.write("아직 연락처가 없습니다. '프로필 & 설문' 탭에서 연락처를 추가할 수 있어요.")
+        st.write("아직 연락처가 없습니다. '프로필 작성' 탭에서 연락처를 추가할 수 있어요.")
 
     accepts = decisions[decisions["decision"] == "수락"]
 
@@ -738,7 +738,7 @@ def show_notifications_page():
                 st.write(f"- 체형: {partner['self_body_type']}")
                 if isinstance(partner.get("self_mbti", ""), str) and partner.get("self_mbti", "").strip():
                     st.write(f"- MBTI: {partner['self_mbti']}")
-                st.write("※ 이 사람을 나도 수락하면 최종 매칭으로 전환됩니다. (→ '매칭 찾기' 탭에서 수락 가능)")
+                st.write("※ 이 사람을 나도 수락하면 최종 매칭으로 전환됩니다. (→ '매칭 보기' 탭에서 수락 가능)")
 
 
 # ------------------------------
@@ -757,7 +757,7 @@ def show_guide_modal():
 
     guides = [
         {
-            "title": "① 프로필 & 설문 작성",
+            "title": "① 프로필 작성",
             "body": """
 - 닉네임을 정하면 나중에 다시 들어와도 그대로 로그인됩니다.
 - 사용 목적, 나이·성별·키·성격·외모타입·체형, 원하는 상대 조건을 차례로 입력해요.
@@ -766,18 +766,18 @@ def show_guide_modal():
 """
         },
         {
-            "title": "② 매칭 찾기",
+            "title": "② 매칭 보기",
             "body": """
-- 프로필 저장 후 '매칭 찾기' 탭에서 나와 잘 맞는 사람을 확인할 수 있어요.
+- '매칭 보기' 탭에서 나와 잘 맞는 사람을 점수 순으로 확인할 수 있어요.
 - 각 카드를 열면 상대 프로필과, 상대가 원하는 이상형 조건을 함께 볼 수 있습니다.
 - 마음에 들면 **“♥ 이 사람 마음에 들어요”**, 아니라면 **“패스할래요”** 를 선택합니다.
 - 두 사람이 모두 '수락'을 눌렀을 때만 최종 매칭이 성사됩니다.
 """
         },
         {
-            "title": "③ 알림함 & 매너온도",
+            "title": "③ 매칭 알림 & 매너온도",
             "body": """
-- '알림함'에서는
+- '매칭 알림 & 매너온도' 탭에서는
   · 나를 먼저 수락한 사람  
   · 서로 수락한 최종 매칭 상대  
   를 한 번에 확인할 수 있어요.
@@ -915,6 +915,16 @@ def main():
             margin-bottom: 16px;
             border: 1px solid #f4c6db;
         }
+
+        /* 슬라이더 색상 커스텀 (바 & 동그라미 핑크로) */
+        [data-testid="stSlider"] div[data-baseweb="slider"] > div > div:nth-child(2) {
+            background-color: #f59ab3;
+        }
+        [data-testid="stSlider"] div[data-baseweb="slider"] [role="slider"] {
+            background-color: #f59ab3;
+            border: 2px solid #f59ab3;
+            box-shadow: 0 0 0 4px rgba(245, 154, 179, 0.25);
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -941,13 +951,13 @@ def main():
 
     menu = st.sidebar.radio(
         "탭 이동",
-        ["프로필 & 설문", "매칭 찾기", "알림함"],
+        ["프로필 작성", "매칭 보기", "매칭 알림 & 매너온도"],
     )
 
     st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    if menu == "프로필 & 설문":
+    if menu == "프로필 작성":
         register_survey()
-    elif menu == "매칭 찾기":
+    elif menu == "매칭 보기":
         show_match_page()
     else:
         show_notifications_page()
