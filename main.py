@@ -106,10 +106,6 @@ def get_prev(prev_row, col, default):
 # 매칭 점수 계산
 # ------------------------------
 def calc_match_score(me, other):
-    """
-    나(me)와 상대(other) 간의 매칭 점수 계산.
-    - me, other: pandas.Series (각 사용자의 row)
-    """
     score = 0.0
 
     # 1. 목적이 다르면 제외
@@ -143,7 +139,6 @@ def calc_match_score(me, other):
     if me["pref_min_age"] <= other["self_age"] <= me["pref_max_age"]:
         score += 10
     else:
-        # 범위 밖이면 매칭 안 함
         return -1
 
     # 성별
@@ -153,7 +148,7 @@ def calc_match_score(me, other):
         else:
             return -1
     else:
-        score += 3  # 성별 상관없으면 살짝 보너스
+        score += 3
 
     # 키
     if me["pref_min_height"] <= other["self_height"] <= me["pref_max_height"]:
@@ -164,13 +159,12 @@ def calc_match_score(me, other):
     other_body = other["self_body_type"]
 
     if (not my_pref_body) or ("상관없음" in my_pref_body):
-        # 체형 상관 없으면 약간의 기본 점수
         score += 1
     else:
         if other_body in my_pref_body:
             score += 4
         else:
-            score -= 1  # 살짝 감점
+            score -= 1
 
     # 성격
     my_pref_p = split_tags(me["pref_personality"])
@@ -180,7 +174,6 @@ def calc_match_score(me, other):
     # 외모 (상관없음 처리)
     my_pref_a = split_tags(me["pref_appearance"])
     if (not my_pref_a) or ("상관없음" in my_pref_a):
-        # 외모 상관 없으면 약간의 기본 점수
         score += 1
     else:
         if other_a in my_pref_a:
@@ -188,13 +181,11 @@ def calc_match_score(me, other):
 
     # ===== 상대가 원하는 조건 vs 내 실제 (상호 매칭) =====
 
-    # 나이
     if other["pref_min_age"] <= me["self_age"] <= other["pref_max_age"]:
         score += 8
     else:
         score -= 5
 
-    # 성별
     if other["pref_gender"] != "상관없음":
         if other["pref_gender"] == me["self_gender"]:
             score += 5
@@ -203,13 +194,11 @@ def calc_match_score(me, other):
     else:
         score += 2
 
-    # 성격
     other_pref_p = split_tags(other["pref_personality"])
     my_p = split_tags(me["self_personality"])
     overlap2 = len(set(other_pref_p) & set(my_p))
     score += overlap2 * 2
 
-    # 외모
     other_pref_a = split_tags(other["pref_appearance"])
     if (not other_pref_a) or ("상관없음" in other_pref_a):
         score += 1
@@ -217,7 +206,6 @@ def calc_match_score(me, other):
         if me["self_appearance"] in other_pref_a:
             score += 2
 
-    # 체형
     other_pref_body = split_tags(other["pref_body_type"])
     my_body = me["self_body_type"]
     if (not other_pref_body) or ("상관없음" in other_pref_body):
@@ -226,10 +214,10 @@ def calc_match_score(me, other):
         if my_body in other_pref_body:
             score += 2
 
-    # ===== 매너온도 보너스 =====
+    # 매너온도 보너스
     mt_me = get_user_manner_temperature(me["user_id"])
     mt_other = get_user_manner_temperature(other["user_id"])
-    score += (mt_me + mt_other) / 50.0  # 대략 최대 +4점 정도
+    score += (mt_me + mt_other) / 50.0
 
     return score
 
@@ -238,11 +226,10 @@ def calc_match_score(me, other):
 # 설문 페이지
 # ------------------------------
 def register_survey():
-    st.subheader("프로필 & 설문")
+    st.subheader("STEP 1 · 프로필 & 설문")
 
     df = load_data()
 
-    # 세션에 저장된 user_id가 있으면 기본값으로
     default_id = st.session_state.get("user_id", "")
     user_id = st.text_input("닉네임 (로그인에 사용할 이름)", max_chars=30, value=default_id)
 
@@ -251,7 +238,6 @@ def register_survey():
         prev = df[df["user_id"] == user_id].iloc[0]
         st.success("기존 설문을 불러왔어요. 수정 후 다시 저장하면 업데이트됩니다.")
 
-    # 기본 설정
     purpose_options = ["친구", "연애", "스터디", "취미", "기타"]
     match_mode_options = ["1:1 매칭", "다인원 매칭"]
     group_scope_options = ["전체 공개", "특정 그룹 내에서"]
@@ -279,10 +265,12 @@ def register_survey():
     if match_mode == "1:1 매칭":
         group_size = 2
     else:
-        group_size = st.slider("희망 모임 인원 (본인 포함)", 3, 10, prev_group_size if 3 <= prev_group_size <= 10 else 4)
+        group_size = st.slider("희망 모임 인원 (본인 포함)", 3, 10,
+                               prev_group_size if 3 <= prev_group_size <= 10 else 4)
 
     st.markdown("---")
-    st.markdown("### 그룹 설정 (선택)")
+    st.markdown("#### 그룹 설정 (선택)")
+
     group_scope = st.selectbox(
         "매칭 범위",
         group_scope_options,
@@ -297,7 +285,7 @@ def register_survey():
         )
 
     st.markdown("---")
-    st.markdown("### 나에 대한 정보")
+    st.markdown("#### 나에 대한 정보")
 
     personality_options = [
         "내향적", "외향적", "차분함", "활발함", "유머있음",
@@ -345,12 +333,12 @@ def register_survey():
             index=appearance_base.index(self_appearance_default) if self_appearance_default in appearance_base else 0
         )
 
-    st.markdown("##### 📞 연락처 (선택)")
+    st.markdown("##### 연락처 (선택)")
     st.write("인스타 ID / 이메일 / 카카오 오픈채팅 링크 등. **최종 매칭된 사람에게만 공개**됩니다.")
     contact_info = st.text_input("연락처", max_chars=100, value=contact_default)
 
     st.markdown("---")
-    st.markdown("### 내가 원하는 상대")
+    st.markdown("#### 내가 원하는 상대")
 
     pref_gender_default = get_prev(prev, "pref_gender", "상관없음")
     pref_min_age_default = int(get_prev(prev, "pref_min_age", 16))
@@ -397,7 +385,7 @@ def register_survey():
         )
 
     st.markdown("---")
-    st.markdown("### 블랙리스트 / 피하고 싶은 유형 (선택)")
+    st.markdown("#### 블랙리스트 / 피하고 싶은 유형 (선택)")
 
     blacklist_personality_default = split_tags(get_prev(prev, "blacklist_personality", ""))
     blacklist_appearance_default = split_tags(get_prev(prev, "blacklist_appearance", ""))
@@ -413,17 +401,14 @@ def register_survey():
         default=[a for a in blacklist_appearance_default if a in appearance_base]
     )
 
-    st.info("※ 매너온도는 내가 설정하지 않고, **최종 매칭된 사람들이 남긴 별점**으로 자동 계산됩니다.")
+    st.info("매너온도는 내가 정하지 않고, 최종 매칭된 사람들이 남긴 별점으로 자동 계산됩니다.")
 
     if st.button("프로필 저장하기", use_container_width=True):
         if not user_id:
             st.error("닉네임을 반드시 입력해 주세요.")
             return
 
-        # 세션에 현재 닉네임 저장 → 다른 탭에서 자동 사용
         st.session_state["user_id"] = user_id
-
-        # 기존 user_id 응답 삭제 후 새로 저장
         df = df[df["user_id"] != user_id]
 
         new_row = {
@@ -456,19 +441,18 @@ def register_survey():
 
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
         save_data(df)
-        st.success("프로필이 저장되었습니다! 이제 '매칭 찾기' 또는 '알림함' 탭을 이용해 보세요.")
+        st.success("프로필이 저장되었습니다. 이제 상단 탭에서 매칭을 확인해 보세요.")
 
 
 # ------------------------------
 # 매칭 보기 페이지
 # ------------------------------
 def show_match_page():
-    st.subheader("매칭 찾기")
+    st.subheader("STEP 2 · 매칭 찾기")
 
-    # 세션에 저장된 ID 사용
     session_id = st.session_state.get("user_id", "")
     if session_id:
-        st.info(f"현재 로그인된 닉네임: **{session_id}** (닉네임 변경은 '프로필 & 설문' 탭에서)")
+        st.info(f"현재 로그인된 닉네임: **{session_id}** (변경은 '프로필 & 설문' 탭)")
         user_id = session_id
     else:
         user_id = st.text_input("내 닉네임 또는 ID 입력", key="match_user_id")
@@ -486,7 +470,6 @@ def show_match_page():
         st.error("해당 ID로 저장된 프로필이 없습니다. 철자 또는 대소문자를 확인해 주세요.")
         return
 
-    # 설문에서 바로 들어온 경우 세션에 ID 저장
     st.session_state["user_id"] = user_id
 
     me = df[df["user_id"] == user_id].iloc[0]
@@ -500,7 +483,6 @@ def show_match_page():
 
     max_results = st.slider("한 번에 볼 매칭 후보 수", 1, 20, 5)
 
-    # 점수 계산
     scores = []
     for _, row in others.iterrows():
         s = calc_match_score(me, row)
@@ -517,12 +499,12 @@ def show_match_page():
     top_df = others[others["user_id"].isin(top_ids)].copy()
     top_df["score"] = top_df["user_id"].map(dict(scores))
 
-    st.markdown("### ✨ 나와 잘 맞는 사람들")
+    st.markdown("##### 나와 잘 맞는 사람들 (점수 순 정렬)")
+
     for _, row in top_df.sort_values("score", ascending=False).iterrows():
         partner_id = row["user_id"]
         partner_mt = get_user_manner_temperature(partner_id)
 
-        # 내 선택 상태
         dec_me = decisions[
             (decisions["from_user"] == user_id) &
             (decisions["to_user"] == partner_id)
@@ -530,11 +512,11 @@ def show_match_page():
         my_decision = dec_me["decision"].iloc[0] if not dec_me.empty else None
 
         if my_decision == "수락":
-            icon = "💚"
+            icon = "♥"
         elif my_decision == "거절":
-            icon = "❌"
+            icon = "×"
         else:
-            icon = "🤍"
+            icon = "♡"
 
         label = f"{icon} {partner_id} 님 · 점수 {row['score']:.1f} · 매너온도 {partner_mt}°"
 
@@ -546,7 +528,7 @@ def show_match_page():
                 st.write("**그룹:**", row["group_scope"])
 
             st.write("---")
-            st.write("#### 🎭 상대 프로필")
+            st.write("**상대 프로필**")
             st.write(f"- 나이: {row['self_age']}")
             st.write(f"- 성별: {row['self_gender']}")
             st.write(f"- 성격: {row['self_personality']}")
@@ -558,7 +540,7 @@ def show_match_page():
             st.write(f"- 현재 매너온도: {partner_mt}°")
 
             st.write("---")
-            st.write("#### 💎 상대가 원하는 이상형")
+            st.write("**상대가 원하는 이상형**")
             st.write(f"- 나이 범위: {row['pref_min_age']} ~ {row['pref_max_age']}")
             st.write(f"- 성별: {row['pref_gender']}")
             st.write(f"- 선호 성격: {row['pref_personality']}")
@@ -567,14 +549,14 @@ def show_match_page():
             st.write(f"- 키 범위: {row['pref_min_height']} ~ {row['pref_max_height']} cm")
 
             st.write("---")
-            st.write("### 매칭 선택")
+            st.write("**이 사람과의 매칭 여부**")
 
             if my_decision:
                 st.info(f"내 선택: **{my_decision}** (최종 결과는 '알림함'에서 확인할 수 있어요.)")
             else:
                 col_a, col_b = st.columns(2)
                 with col_a:
-                    if st.button("💗 이 사람 마음에 들어요", key=f"accept_{partner_id}"):
+                    if st.button("♥ 이 사람 마음에 들어요", key=f"accept_{partner_id}"):
                         decisions = load_decisions()
                         decisions = decisions[
                             ~(
@@ -593,7 +575,7 @@ def show_match_page():
                         st.success("수락으로 저장되었습니다. '알림함'에서 최종 매칭을 확인해 보세요.")
                         st.rerun()
                 with col_b:
-                    if st.button("🚫 패스할래요", key=f"reject_{partner_id}"):
+                    if st.button("패스할래요", key=f"reject_{partner_id}"):
                         decisions = load_decisions()
                         decisions = decisions[
                             ~(
@@ -617,7 +599,7 @@ def show_match_page():
 # 알림 / 최종 매칭 페이지
 # ------------------------------
 def show_notifications_page():
-    st.subheader("알림함")
+    st.subheader("STEP 3 · 알림함 & 매너온도")
 
     session_id = st.session_state.get("user_id", "")
     if session_id:
@@ -635,24 +617,21 @@ def show_notifications_page():
         st.error("해당 ID로 저장된 프로필이 없습니다. 먼저 '프로필 & 설문'에서 프로필을 저장해 주세요.")
         return
 
-    # 세션에 ID 저장
     st.session_state["user_id"] = user_id
 
     decisions = load_decisions()
     ratings = load_ratings()
 
-    # 내 매너온도
     my_mt = get_user_manner_temperature(user_id)
     me = df[df["user_id"] == user_id].iloc[0]
     my_contact = me["contact_info"] if isinstance(me["contact_info"], str) else ""
 
     st.info(f"현재 내 매너온도는 **{my_mt}°** 입니다.")
     if my_contact:
-        st.write(f"📞 등록된 내 연락처: **{my_contact}**")
+        st.write(f"등록된 내 연락처: **{my_contact}**")
     else:
-        st.write("📞 아직 연락처가 없습니다. '프로필 & 설문' 탭에서 연락처를 추가해 보세요.")
+        st.write("아직 연락처가 없습니다. '프로필 & 설문' 탭에서 연락처를 추가할 수 있어요.")
 
-    # ===== 상호 수락(최종 매칭) 계산 =====
     accepts = decisions[decisions["decision"] == "수락"]
 
     mutual_ids = set()
@@ -663,12 +642,11 @@ def show_notifications_page():
         if not accepts[(accepts["from_user"] == other) & (accepts["to_user"] == user_id)].empty:
             mutual_ids.add(other)
 
-    # ===== 나를 수락한 사람들 (한쪽만 수락해도) =====
     liked_me_ids_all = set(accepts[accepts["to_user"] == user_id]["from_user"])
     liked_me_only = liked_me_ids_all - mutual_ids
 
-    # --- 최종 매칭 ---
-    st.markdown("### ✅ 최종 매칭된 사람들")
+    st.markdown("##### 최종 매칭된 사람들 (서로 ♥ 수락)")
+
     if not mutual_ids:
         st.info("아직 양쪽 모두 수락한 최종 매칭은 없습니다.")
     else:
@@ -680,7 +658,7 @@ def show_notifications_page():
             partner_mt = get_user_manner_temperature(pid)
             partner_contact = partner["contact_info"] if isinstance(partner["contact_info"], str) else ""
 
-            with st.expander(f"🎉 {pid} 님과 매칭되었어요!"):
+            with st.expander(f"{pid} 님과 매칭되었어요 (♥)"):
                 st.write("**사용 목적:**", partner["purpose"])
                 if isinstance(partner["group_name"], str) and partner["group_name"].strip():
                     st.write("**그룹:**", f"{partner['group_name']} ({partner['group_scope']})")
@@ -688,7 +666,7 @@ def show_notifications_page():
                     st.write("**그룹:**", partner["group_scope"])
 
                 st.write("---")
-                st.write("#### 상대 프로필")
+                st.write("**상대 프로필**")
                 st.write(f"- 나이: {partner['self_age']}")
                 st.write(f"- 성별: {partner['self_gender']}")
                 st.write(f"- 성격: {partner['self_personality']}")
@@ -700,14 +678,14 @@ def show_notifications_page():
                 st.write(f"- 매너온도: {partner_mt}°")
 
                 st.write("---")
-                st.write("#### 연락처")
+                st.write("**연락처**")
                 if partner_contact:
                     st.success(f"상대가 등록한 연락처: **{partner_contact}**")
                 else:
                     st.info("상대가 아직 연락처를 등록하지 않았어요. 나중에 다시 확인해 보세요.")
 
                 st.write("---")
-                st.write("#### ⭐ 매너 평가")
+                st.write("**매너 평가 (별점 1~5점)**")
 
                 existing_rating = ratings[
                     (ratings["from_user"] == user_id) &
@@ -716,7 +694,7 @@ def show_notifications_page():
                 default_rating = int(existing_rating["rating"].iloc[0]) if not existing_rating.empty else 5
 
                 new_rating = st.slider(
-                    "별점 (1점 = 별로, 5점 = 최고)",
+                    "별점 선택",
                     1, 5, default_rating,
                     key=f"rating_{pid}"
                 )
@@ -737,11 +715,12 @@ def show_notifications_page():
                     }
                     ratings = pd.concat([ratings, pd.DataFrame([new_row])], ignore_index=True)
                     save_ratings(ratings)
-                    st.success("별점이 저장되었습니다! 상대의 매너온도에 반영됩니다.")
+                    st.success("별점이 저장되었습니다. 상대의 매너온도에 반영됩니다.")
                     st.rerun()
 
     st.markdown("---")
-    st.markdown("### 💌 나를 먼저 수락한 사람들")
+    st.markdown("##### 나를 먼저 수락한 사람들 (상대만 ♥ 선택)")
+
     if not liked_me_only:
         st.info("아직 나를 먼저 수락한 사람이 없습니다.")
     else:
@@ -750,7 +729,7 @@ def show_notifications_page():
             if partner.empty:
                 continue
             partner = partner.iloc[0]
-            with st.expander(f"{pid} 님이 나를 수락했습니다 💚"):
+            with st.expander(f"{pid} 님이 나를 먼저 수락했습니다 (♥)"):
                 st.write("**사용 목적:**", partner["purpose"])
                 st.write(f"- 나이: {partner['self_age']}")
                 st.write(f"- 성별: {partner['self_gender']}")
@@ -766,7 +745,6 @@ def show_notifications_page():
 # 온보딩 가이드 모달 (슬라이드)
 # ------------------------------
 def show_guide_modal():
-    # 세션 상태 초기화
     if "guide_open" not in st.session_state:
         st.session_state["guide_open"] = True
     if "guide_step" not in st.session_state:
@@ -779,33 +757,32 @@ def show_guide_modal():
 
     guides = [
         {
-            "title": "1. 프로필 & 설문 작성하기",
+            "title": "① 프로필 & 설문 작성",
             "body": """
-- 상단에서 **닉네임**을 정하면, 다른 탭에서도 자동으로 로그인돼요.
-- 사용 목적(친구/연애/모임), 나이·성별·키·성격·외모타입·체형, 이상형 조건을 순서대로 입력합니다.
-- **그룹 이름(학교/학원/반)** 을 쓰면, 그 그룹 안에서만 매칭돼요.
-- 연락처는 선택 사항이며, **최종 매칭된 사람에게만 공개**됩니다.
+- 닉네임을 정하면 나중에 다시 들어와도 그대로 로그인됩니다.
+- 사용 목적, 나이·성별·키·성격·외모타입·체형, 원하는 상대 조건을 차례로 입력해요.
+- 학교·학원·반 이름을 적으면 그 그룹 안에서만 매칭이 이루어집니다.
+- 연락처는 적어도 되고, 비워둬도 괜찮아요. 최종 매칭된 사람에게만 보여집니다.
 """
         },
         {
-            "title": "2. 매칭 찾기 탭",
+            "title": "② 매칭 찾기",
             "body": """
-- 내 프로필을 저장한 후 **매칭 찾기** 탭으로 이동하면,
-  조건이 잘 맞는 사람들이 **점수 순으로** 보여요.
-- 각 사람을 눌러서 프로필과, **상대가 원하는 이상형**까지 같이 볼 수 있어요.
-- 마음에 들면 **“이 사람 마음에 들어요”**, 아니면 **“패스할래요”** 버튼을 선택합니다.
-- **양쪽이 모두 수락해야만** 최종 매칭이 되고, 연락처를 볼 수 있어요.
+- 프로필 저장 후 '매칭 찾기' 탭에서 나와 잘 맞는 사람을 확인할 수 있어요.
+- 각 카드를 열면 상대 프로필과, 상대가 원하는 이상형 조건을 함께 볼 수 있습니다.
+- 마음에 들면 **“♥ 이 사람 마음에 들어요”**, 아니라면 **“패스할래요”** 를 선택합니다.
+- 두 사람이 모두 '수락'을 눌렀을 때만 최종 매칭이 성사됩니다.
 """
         },
         {
-            "title": "3. 알림함 & 매너온도",
+            "title": "③ 알림함 & 매너온도",
             "body": """
-- **알림함**에서는
-  - 나를 먼저 수락한 사람들
-  - 서로 수락해서 **최종 매칭된 사람들**
-  을 한눈에 확인할 수 있어요.
-- 최종 매칭된 사람의 프로필과 연락처를 보고, 만남 후에는 **별점(1~5점)** 으로 매너를 평가할 수 있어요.
-- 이 별점 평균이 바로 그 사람의 **매너온도**가 되고,
+- '알림함'에서는
+  · 나를 먼저 수락한 사람  
+  · 서로 수락한 최종 매칭 상대  
+  를 한 번에 확인할 수 있어요.
+- 최종 매칭된 상대의 연락처를 확인하고, 만남 후에는 1~5점 별점으로 매너를 평가합니다.
+- 이 별점의 평균이 그 사람의 **매너온도**가 되고,
   다음 매칭에서 신뢰도를 판단하는 기준이 됩니다.
 """
         },
@@ -816,18 +793,16 @@ def show_guide_modal():
 
     st.markdown('<div class="guide-block">', unsafe_allow_html=True)
 
-    # 상단 제목 + X 버튼
     top_left, top_right = st.columns([9, 1])
     with top_left:
-        st.markdown(f"#### {info['title']}")
+        st.markdown(f"**{info['title']}**")
     with top_right:
-        if st.button("✕", key="guide_close"):
+        if st.button("X", key="guide_close"):
             st.session_state["guide_open"] = False
             st.rerun()
 
     st.markdown(info["body"])
 
-    # 하단 슬라이드 컨트롤
     prev_col, center_col, next_col = st.columns([2, 5, 3])
     with prev_col:
         if step > 0:
@@ -836,14 +811,14 @@ def show_guide_modal():
                 st.rerun()
     with center_col:
         dots = "".join("●" if i == step else "○" for i in range(total_steps))
-        st.markdown(f"<div style='text-align:center;color:#ff4b6b;'>{dots}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align:center;color:#f18da8;'>{dots}</div>", unsafe_allow_html=True)
     with next_col:
         if step < total_steps - 1:
             if st.button("다음 →", key="guide_next"):
                 st.session_state["guide_step"] += 1
                 st.rerun()
         else:
-            if st.button("가이드 끝내기", key="guide_finish"):
+            if st.button("가이드 닫기", key="guide_finish"):
                 st.session_state["guide_open"] = False
                 st.rerun()
 
@@ -851,119 +826,119 @@ def show_guide_modal():
 
 
 # ------------------------------
-# 메인 함수 + 글로벌 UI 스타일
+# 메인 + 스타일
 # ------------------------------
 def main():
-    st.set_page_config(page_title="souly", page_icon="💗", layout="wide")
+    st.set_page_config(page_title="souly", page_icon="♥", layout="wide")
 
-    # ===== 글로벌 CSS (핑크 데이팅 앱 느낌) =====
     st.markdown(
         """
         <style>
         .stApp {
-            background: radial-gradient(circle at top left, #ffe4f0 0, #ffffff 50%, #ffe9f2 100%);
+            background: linear-gradient(180deg, #fef8fb 0%, #ffffff 45%, #fdeff4 100%);
         }
         .main-block {
             max-width: 980px;
             margin: 0 auto;
         }
         .hero-card {
-            background: linear-gradient(135deg, #ff9ac6, #ff4b6b);
-            border-radius: 32px;
-            padding: 24px 32px;
-            color: white;
+            background: #fbe7ef;
+            border-radius: 28px;
+            padding: 18px 26px;
+            color: #44292f;
             display: flex;
             align-items: center;
-            gap: 24px;
-            box-shadow: 0 18px 40px rgba(255, 75, 107, 0.35);
-            margin-bottom: 24px;
+            gap: 20px;
+            box-shadow: 0 12px 30px rgba(243, 177, 199, 0.55);
+            margin-bottom: 20px;
         }
         .hero-icon {
-            width: 88px;
-            height: 88px;
+            width: 80px;
+            height: 80px;
             border-radius: 24px;
-            background: white;
+            background: #ffffff;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 42px;
-            color: #ff4b6b;
+            font-size: 40px;
+            color: #f38da4;
             flex-shrink: 0;
-            font-weight: 800;
+            border: 1px solid #ffd6e5;
+            font-weight: 700;
         }
         .hero-logo-word {
-            font-size: 34px;
+            font-size: 30px;
             font-weight: 900;
             letter-spacing: 2px;
             text-transform: lowercase;
         }
         .hero-text p {
             margin: 2px 0;
-            font-size: 15px;
-            opacity: 0.92;
+            font-size: 14px;
         }
         .hero-tagline {
-            font-size: 13px;
-            opacity: 0.85;
+            font-size: 12px;
+            opacity: 0.8;
         }
         .section-card {
-            background: rgba(255,255,255,0.96);
+            background: #ffffff;
             border-radius: 24px;
-            padding: 20px 24px 24px 24px;
-            box-shadow: 0 10px 28px rgba(0,0,0,0.05);
+            padding: 18px 22px 22px 22px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.04);
             margin-bottom: 18px;
+            border: 1px solid #f7dfe9;
         }
         .stButton > button {
             border-radius: 999px;
-            padding: 0.55rem 1.3rem;
+            padding: 0.45rem 1.2rem;
             border: none;
-            background: linear-gradient(135deg, #ff5c8d, #ff2e63);
-            color: white;
+            background: linear-gradient(135deg, #f9c2cf, #f59ab3);
+            color: #3d262c;
             font-weight: 600;
-            box-shadow: 0 10px 22px rgba(255, 46, 99, 0.35);
+            box-shadow: 0 8px 20px rgba(245, 154, 179, 0.45);
         }
         .stButton > button:hover {
-            filter: brightness(1.05);
+            filter: brightness(1.03);
         }
         section[data-testid="stSidebar"] {
             background: #ffffff;
-            border-right: 1px solid rgba(255,192,203,0.45);
+            border-right: 1px solid #f4ccd9;
         }
-        /* 온보딩 가이드 카드 */
+        section[data-testid="stSidebar"] label {
+            font-weight: 600;
+        }
         .guide-block {
-            background: rgba(255,255,255,0.98);
-            border-radius: 20px;
-            box-shadow: 0 12px 30px rgba(0,0,0,0.12);
-            padding: 14px 18px 18px 18px;
-            margin-bottom: 18px;
-            border: 1px solid #ffd1e5;
+            background: #fff7fb;
+            border-radius: 18px;
+            box-shadow: 0 10px 24px rgba(0,0,0,0.06);
+            padding: 14px 16px 18px 16px;
+            margin-bottom: 16px;
+            border: 1px solid #f4c6db;
         }
         </style>
         """,
         unsafe_allow_html=True,
     )
 
-    # ===== 헤더 (Souly 로고 영역) =====
     st.markdown('<div class="main-block">', unsafe_allow_html=True)
 
     st.markdown(
         """
         <div class="hero-card">
-          <div class="hero-icon">💗</div>
+          <div class="hero-icon">♥</div>
           <div class="hero-text">
             <div class="hero-logo-word">souly</div>
-            <p>친구 · 연애 · 모임까지, 설문 기반으로 나와 잘 맞는 사람을 찾아주는 매칭 서비스</p>
-            <p class="hero-tagline">사진 대신 성격·외모 타입·매너온도로 연결해, 조금 더 안전하고 편안한 만남을 지향해요.</p>
+            <p>친구 · 연애 · 모임까지, 설문 기반으로 나와 잘 맞는 사람을 찾아주는 매칭 서비스입니다.</p>
+            <p class="hero-tagline">사진 대신 성격 · 외모 타입 · 체형 · 매너온도로 연결하는, 부드러운 매칭 경험을 지향해요.</p>
           </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # ===== 온보딩 가이드 모달 (슬라이드) =====
+    # 온보딩 가이드
     show_guide_modal()
 
-    # ===== 본문 카드 =====
     menu = st.sidebar.radio(
         "탭 이동",
         ["프로필 & 설문", "매칭 찾기", "알림함"],
