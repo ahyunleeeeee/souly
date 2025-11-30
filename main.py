@@ -763,27 +763,110 @@ def show_notifications_page():
 
 
 # ------------------------------
+# 온보딩 가이드 모달 (슬라이드)
+# ------------------------------
+def show_guide_modal():
+    # 세션 상태 초기화
+    if "guide_open" not in st.session_state:
+        st.session_state["guide_open"] = True
+    if "guide_step" not in st.session_state:
+        st.session_state["guide_step"] = 0
+
+    if not st.session_state["guide_open"]:
+        return
+
+    step = st.session_state["guide_step"]
+
+    guides = [
+        {
+            "title": "1. 프로필 & 설문 작성하기",
+            "body": """
+- 상단에서 **닉네임**을 정하면, 다른 탭에서도 자동으로 로그인돼요.
+- 사용 목적(친구/연애/모임), 나이·성별·키·성격·외모타입·체형, 이상형 조건을 순서대로 입력합니다.
+- **그룹 이름(학교/학원/반)** 을 쓰면, 그 그룹 안에서만 매칭돼요.
+- 연락처는 선택 사항이며, **최종 매칭된 사람에게만 공개**됩니다.
+"""
+        },
+        {
+            "title": "2. 매칭 찾기 탭",
+            "body": """
+- 내 프로필을 저장한 후 **매칭 찾기** 탭으로 이동하면,
+  조건이 잘 맞는 사람들이 **점수 순으로** 보여요.
+- 각 사람을 눌러서 프로필과, **상대가 원하는 이상형**까지 같이 볼 수 있어요.
+- 마음에 들면 **“이 사람 마음에 들어요”**, 아니면 **“패스할래요”** 버튼을 선택합니다.
+- **양쪽이 모두 수락해야만** 최종 매칭이 되고, 연락처를 볼 수 있어요.
+"""
+        },
+        {
+            "title": "3. 알림함 & 매너온도",
+            "body": """
+- **알림함**에서는
+  - 나를 먼저 수락한 사람들
+  - 서로 수락해서 **최종 매칭된 사람들**
+  을 한눈에 확인할 수 있어요.
+- 최종 매칭된 사람의 프로필과 연락처를 보고, 만남 후에는 **별점(1~5점)** 으로 매너를 평가할 수 있어요.
+- 이 별점 평균이 바로 그 사람의 **매너온도**가 되고,
+  다음 매칭에서 신뢰도를 판단하는 기준이 됩니다.
+"""
+        },
+    ]
+
+    total_steps = len(guides)
+    info = guides[step]
+
+    st.markdown('<div class="guide-block">', unsafe_allow_html=True)
+
+    # 상단 제목 + X 버튼
+    top_left, top_right = st.columns([9, 1])
+    with top_left:
+        st.markdown(f"#### {info['title']}")
+    with top_right:
+        if st.button("✕", key="guide_close"):
+            st.session_state["guide_open"] = False
+            st.rerun()
+
+    st.markdown(info["body"])
+
+    # 하단 슬라이드 컨트롤
+    prev_col, center_col, next_col = st.columns([2, 5, 3])
+    with prev_col:
+        if step > 0:
+            if st.button("← 이전", key="guide_prev"):
+                st.session_state["guide_step"] -= 1
+                st.rerun()
+    with center_col:
+        dots = "".join("●" if i == step else "○" for i in range(total_steps))
+        st.markdown(f"<div style='text-align:center;color:#ff4b6b;'>{dots}</div>", unsafe_allow_html=True)
+    with next_col:
+        if step < total_steps - 1:
+            if st.button("다음 →", key="guide_next"):
+                st.session_state["guide_step"] += 1
+                st.rerun()
+        else:
+            if st.button("가이드 끝내기", key="guide_finish"):
+                st.session_state["guide_open"] = False
+                st.rerun()
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
+# ------------------------------
 # 메인 함수 + 글로벌 UI 스타일
 # ------------------------------
 def main():
-    st.set_page_config(page_title="HeartMatch", page_icon="💗", layout="wide")
+    st.set_page_config(page_title="souly", page_icon="💗", layout="wide")
 
     # ===== 글로벌 CSS (핑크 데이팅 앱 느낌) =====
     st.markdown(
         """
         <style>
-        /* 배경 살짝 톤 다운 */
         .stApp {
             background: radial-gradient(circle at top left, #ffe4f0 0, #ffffff 50%, #ffe9f2 100%);
         }
-
-        /* 메인 컨테이너 폭 제한 */
         .main-block {
             max-width: 980px;
             margin: 0 auto;
         }
-
-        /* 히어로 카드 */
         .hero-card {
             background: linear-gradient(135deg, #ff9ac6, #ff4b6b);
             border-radius: 32px;
@@ -803,14 +886,16 @@ def main():
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 46px;
+            font-size: 42px;
             color: #ff4b6b;
             flex-shrink: 0;
-        }
-        .hero-text h1 {
-            font-size: 32px;
-            margin: 0 0 6px 0;
             font-weight: 800;
+        }
+        .hero-logo-word {
+            font-size: 34px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            text-transform: lowercase;
         }
         .hero-text p {
             margin: 2px 0;
@@ -821,8 +906,6 @@ def main():
             font-size: 13px;
             opacity: 0.85;
         }
-
-        /* 섹션 카드 */
         .section-card {
             background: rgba(255,255,255,0.96);
             border-radius: 24px;
@@ -830,16 +913,6 @@ def main():
             box-shadow: 0 10px 28px rgba(0,0,0,0.05);
             margin-bottom: 18px;
         }
-
-        /* 제목 스타일 */
-        .section-title {
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 10px;
-            color: #222;
-        }
-
-        /* 버튼 스타일 */
         .stButton > button {
             border-radius: 999px;
             padding: 0.55rem 1.3rem;
@@ -852,23 +925,25 @@ def main():
         .stButton > button:hover {
             filter: brightness(1.05);
         }
-
-        /* 라디오 / 셀렉트 살짝 둥글게 */
-        .stRadio > label, .stSelectbox > label {
-            font-weight: 600;
-        }
-
-        /* 사이드바 */
         section[data-testid="stSidebar"] {
             background: #ffffff;
             border-right: 1px solid rgba(255,192,203,0.45);
+        }
+        /* 온보딩 가이드 카드 */
+        .guide-block {
+            background: rgba(255,255,255,0.98);
+            border-radius: 20px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+            padding: 14px 18px 18px 18px;
+            margin-bottom: 18px;
+            border: 1px solid #ffd1e5;
         }
         </style>
         """,
         unsafe_allow_html=True,
     )
 
-    # ===== 헤더 (히어로 카드) =====
+    # ===== 헤더 (Souly 로고 영역) =====
     st.markdown('<div class="main-block">', unsafe_allow_html=True)
 
     st.markdown(
@@ -876,16 +951,19 @@ def main():
         <div class="hero-card">
           <div class="hero-icon">💗</div>
           <div class="hero-text">
-            <h1>Souly</h1>
+            <div class="hero-logo-word">souly</div>
             <p>친구 · 연애 · 모임까지, 설문 기반으로 나와 잘 맞는 사람을 찾아주는 매칭 서비스</p>
-            <p class="hero-tagline">사진 대신 성격 · 외모 타입 · 체형 정보만 사용해, 조금 더 안전하고 편안한 매칭을 지향해요.</p>
+            <p class="hero-tagline">사진 대신 성격·외모 타입·매너온도로 연결해, 조금 더 안전하고 편안한 만남을 지향해요.</p>
           </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # ===== 페이지 선택 =====
+    # ===== 온보딩 가이드 모달 (슬라이드) =====
+    show_guide_modal()
+
+    # ===== 본문 카드 =====
     menu = st.sidebar.radio(
         "탭 이동",
         ["프로필 & 설문", "매칭 찾기", "알림함"],
@@ -904,55 +982,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# ===== 온보딩 모달 (처음 접속 시 표시) =====
-if "onboarding_shown" not in st.session_state:
-    st.session_state["onboarding_shown"] = False
-
-if not st.session_state["onboarding_shown"]:
-    st.markdown(
-        """
-        <style>
-        .onboard-modal {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 380px;
-            background: white;
-            padding: 26px 30px;
-            border-radius: 22px;
-            text-align: center;
-            box-shadow: 0 20px 60px rgba(255, 60, 120, 0.35);
-            z-index: 9999;
-            border: 2px solid #FFD6E8;
-        }
-        .onboard-title {
-            font-size: 24px;
-            font-weight: 800;
-            color: #FF2E63;
-            margin-bottom: 10px;
-        }
-        .onboard-text {
-            font-size: 15px;
-            color: #333;
-            line-height: 1.45;
-            margin-bottom: 18px;
-        }
-        </style>
-        <div class="onboard-modal">
-            <div class="onboard-title">환영합니다! 💗</div>
-            <div class="onboard-text">
-                Souly는 성격과 취향 기반으로<br>
-                나와 잘 맞는 사람을 연결해주는 매칭 서비스예요.<br><br>
-                사진 없이 더 안전하고 편안한 매칭을 경험해보세요!
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    if st.button("시작하기 💞", key="close_onboard"):
-        st.session_state["onboarding_shown"] = True
-        st.rerun()
-
