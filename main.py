@@ -28,7 +28,7 @@ def load_data():
         "pref_appearance", "pref_body_type",
         "pref_min_height", "pref_max_height",
         "blacklist_personality", "blacklist_appearance",
-        "contact_info"
+        "contact_info",
     ]
     all_cols = base_cols + ["team_code"]
 
@@ -279,13 +279,13 @@ def register_survey():
         purpose = st.selectbox(
             "사용 목적",
             purpose_options,
-            index=purpose_options.index(purpose_default) if purpose_default in purpose_options else 0
+            index=purpose_options.index(purpose_default) if purpose_default in purpose_options else 0,
         )
     with col_top2:
         match_mode = st.radio(
             "매칭 방식",
             match_mode_options,
-            index=match_mode_options.index(match_mode_default) if match_mode_default in match_mode_options else 0
+            index=match_mode_options.index(match_mode_default) if match_mode_default in match_mode_options else 0,
         )
 
     # --- 매칭 인원 / 팀 코드 설정 ---
@@ -322,7 +322,7 @@ def register_survey():
                 "팀 코드 / 팀 이름 (친구들과 동일하게 입력)",
                 max_chars=20,
                 value=str(team_code_default),
-                help="같이 지원하는 친구들과 똑같이 적으면 한 팀으로 묶어서 2:2, 3:3 식으로 매칭할 수 있어요."
+                help="같이 지원하는 친구들과 똑같이 적으면 한 팀으로 묶어서 2:2, 3:3 식으로 매칭할 수 있어요.",
             )
         st.caption("팀 매칭에서는 같은 인원 수를 가진 다른 팀과만 매칭됩니다. (예: 2명 팀 ↔ 2명 팀)")
 
@@ -332,22 +332,31 @@ def register_survey():
     group_scope = st.selectbox(
         "매칭 범위",
         group_scope_options,
-        index=group_scope_options.index(group_scope_default) if group_scope_default in group_scope_options else 0
+        index=group_scope_options.index(group_scope_default) if group_scope_default in group_scope_options else 0,
     )
     group_name = ""
     if group_scope == "특정 그룹 내에서":
         group_name = st.text_input(
             "그룹 이름 (예: OO고등학교, OO학원, 1학년 3반 등)",
             max_chars=50,
-            value=group_name_default
+            value=group_name_default,
         )
 
     st.markdown("---")
     st.markdown("#### 나에 대한 정보")
 
     personality_options = [
-        "내향적", "외향적", "차분함", "활발함", "유머있음",
-        "논리적", "감성적", "리더형", "서포터형", "즉흥적", "계획적"
+        "내향적",
+        "외향적",
+        "차분함",
+        "활발함",
+        "유머있음",
+        "논리적",
+        "감성적",
+        "리더형",
+        "서포터형",
+        "즉흥적",
+        "계획적",
     ]
     appearance_base = ["강아지상", "고양이상", "여우상", "토끼상", "곰상", "사슴상", "공룡상", "기타"]
     body_type_options = ["저체중", "보통", "과체중"]
@@ -358,7 +367,7 @@ def register_survey():
         self_height_default = int(get_prev(prev, "self_height", 165))
         self_gender_default = get_prev(prev, "self_gender", "여성")
         self_body_type_default = get_prev(prev, "self_body_type", "보통")
-        self_mbti_default = get_prev(prev, "self_mbti", "")
+        self_mbti_default = str(get_prev(prev, "self_mbti", "")).upper()
         contact_default = get_prev(prev, "contact_info", "")
 
         self_age = st.number_input("나이", 10, 100, self_age_default)
@@ -366,15 +375,21 @@ def register_survey():
             "성별",
             ["여성", "남성", "기타"],
             index=["여성", "남성", "기타"].index(self_gender_default)
-            if self_gender_default in ["여성", "남성", "기타"] else 0
+            if self_gender_default in ["여성", "남성", "기타"]
+            else 0,
         )
         self_height = st.number_input("키 (cm)", 130, 220, self_height_default)
         self_body_type = st.selectbox(
             "본인 체형",
             body_type_options,
-            index=body_type_options.index(self_body_type_default) if self_body_type_default in body_type_options else 1
+            index=body_type_options.index(self_body_type_default)
+            if self_body_type_default in body_type_options
+            else 1,
         )
-        self_mbti = st.text_input("MBTI (선택, 예: INFP)", max_chars=4, value=str(self_mbti_default))
+        raw_mbti = st.text_input(
+            "MBTI (선택, 예: INFP)", max_chars=4, value=self_mbti_default
+        )
+        self_mbti = raw_mbti.upper()
 
     with col2:
         self_personality_default = split_tags(get_prev(prev, "self_personality", ""))
@@ -383,12 +398,14 @@ def register_survey():
         self_personality = st.multiselect(
             "본인 성격 (복수 선택 가능)",
             personality_options,
-            default=[p for p in self_personality_default if p in personality_options]
+            default=[p for p in self_personality_default if p in personality_options],
         )
         self_appearance = st.selectbox(
             "본인 외모 이미지에 가장 가까운 것",
             appearance_base,
-            index=appearance_base.index(self_appearance_default) if self_appearance_default in appearance_base else 0
+            index=appearance_base.index(self_appearance_default)
+            if self_appearance_default in appearance_base
+            else 0,
         )
 
     st.markdown("##### 연락처 (선택)")
@@ -412,34 +429,37 @@ def register_survey():
             "원하는 성별",
             ["상관없음", "여성", "남성"],
             index=["상관없음", "여성", "남성"].index(pref_gender_default)
-            if pref_gender_default in ["상관없음", "여성", "남성"] else 0
+            if pref_gender_default in ["상관없음", "여성", "남성"]
+            else 0,
         )
         pref_min_age, pref_max_age = st.slider(
             "원하는 나이 범위",
-            10, 100,
-            (pref_min_age_default, pref_max_age_default)
+            10,
+            100,
+            (pref_min_age_default, pref_max_age_default),
         )
         pref_min_height, pref_max_height = st.slider(
             "원하는 키 범위 (cm)",
-            130, 220,
-            (pref_min_height_default, pref_max_height_default)
+            130,
+            220,
+            (pref_min_height_default, pref_max_height_default),
         )
 
     with st.columns(2)[1]:
         pref_personality = st.multiselect(
             "원하는 성격 (복수 선택 가능)",
             personality_options,
-            default=[p for p in pref_personality_default if p in personality_options]
+            default=[p for p in pref_personality_default if p in personality_options],
         )
         pref_appearance = st.multiselect(
             "선호 외모 타입",
             ["상관없음"] + appearance_base,
-            default=[a for a in pref_appearance_default if a in (["상관없음"] + appearance_base)]
+            default=[a for a in pref_appearance_default if a in (["상관없음"] + appearance_base)],
         )
         pref_body_type = st.multiselect(
             "선호 체형",
             ["상관없음"] + body_type_options,
-            default=[b for b in pref_body_type_default if b in (["상관없음"] + body_type_options)]
+            default=[b for b in pref_body_type_default if b in (["상관없음"] + body_type_options)],
         )
 
     st.markdown("---")
@@ -451,12 +471,12 @@ def register_survey():
     blacklist_personality = st.multiselect(
         "피하고 싶은 성격",
         personality_options,
-        default=[p for p in blacklist_personality_default if p in personality_options]
+        default=[p for p in blacklist_personality_default if p in personality_options],
     )
     blacklist_appearance = st.multiselect(
         "피하고 싶은 외모 타입",
         appearance_base,
-        default=[a for a in blacklist_appearance_default if a in appearance_base]
+        default=[a for a in blacklist_appearance_default if a in appearance_base],
     )
 
     st.info("매너온도는 내가 정하지 않고, 최종 매칭된 사람들이 남긴 별점(1~10점)으로 자동 계산됩니다.")
@@ -565,8 +585,7 @@ def show_match_page():
         partner_mt = get_user_manner_temperature(partner_id)
 
         dec_me = decisions[
-            (decisions["from_user"] == user_id) &
-            (decisions["to_user"] == partner_id)
+            (decisions["from_user"] == user_id) & (decisions["to_user"] == partner_id)
         ]
         my_decision = dec_me["decision"].iloc[0] if not dec_me.empty else None
 
@@ -611,7 +630,9 @@ def show_match_page():
             st.write("**이 사람과의 매칭 여부**")
 
             if my_decision:
-                st.info(f"내 선택: **{my_decision}** (최종 결과는 '매칭 알림 & 매너온도' 탭에서 확인할 수 있어요.)")
+                st.info(
+                    f"내 선택: **{my_decision}** (최종 결과는 '매칭 알림 & 매너온도' 탭에서 확인할 수 있어요.)"
+                )
             else:
                 col_a, col_b = st.columns(2)
                 with col_a:
@@ -619,34 +640,36 @@ def show_match_page():
                         decisions = load_decisions()
                         decisions = decisions[
                             ~(
-                                (decisions["from_user"] == user_id) &
-                                (decisions["to_user"] == partner_id)
+                                (decisions["from_user"] == user_id)
+                                & (decisions["to_user"] == partner_id)
                             )
                         ]
                         new_dec = {
                             "timestamp": datetime.now().isoformat(),
                             "from_user": user_id,
                             "to_user": partner_id,
-                            "decision": "수락"
+                            "decision": "수락",
                         }
                         decisions = pd.concat([decisions, pd.DataFrame([new_dec])], ignore_index=True)
                         save_decisions(decisions)
-                        st.success("수락으로 저장되었습니다. '매칭 알림 & 매너온도' 탭에서 최종 매칭을 확인해 보세요.")
+                        st.success(
+                            "수락으로 저장되었습니다. '매칭 알림 & 매너온도' 탭에서 최종 매칭을 확인해 보세요."
+                        )
                         st.rerun()
                 with col_b:
                     if st.button("패스할래요", key=f"reject_{partner_id}"):
                         decisions = load_decisions()
                         decisions = decisions[
                             ~(
-                                (decisions["from_user"] == user_id) &
-                                (decisions["to_user"] == partner_id)
+                                (decisions["from_user"] == user_id)
+                                & (decisions["to_user"] == partner_id)
                             )
                         ]
                         new_dec = {
                             "timestamp": datetime.now().isoformat(),
                             "from_user": user_id,
                             "to_user": partner_id,
-                            "decision": "거절"
+                            "decision": "거절",
                         }
                         decisions = pd.concat([decisions, pd.DataFrame([new_dec])], ignore_index=True)
                         save_decisions(decisions)
@@ -698,7 +721,9 @@ def show_notifications_page():
 
     for _, row in my_accepts.iterrows():
         other = row["to_user"]
-        if not accepts[(accepts["from_user"] == other) & (accepts["to_user"] == user_id)].empty:
+        if not accepts[
+            (accepts["from_user"] == other) & (accepts["to_user"] == user_id)
+        ].empty:
             mutual_ids.add(other)
 
     liked_me_ids_all = set(accepts[accepts["to_user"] == user_id]["from_user"])
@@ -747,23 +772,24 @@ def show_notifications_page():
                 st.write("**매너 평가 (별점 1~10점)**")
 
                 existing_rating = ratings[
-                    (ratings["from_user"] == user_id) &
-                    (ratings["to_user"] == pid)
+                    (ratings["from_user"] == user_id) & (ratings["to_user"] == pid)
                 ]
                 default_rating = int(existing_rating["rating"].iloc[0]) if not existing_rating.empty else 10
 
                 new_rating = st.slider(
                     "별점 선택",
-                    1, 10, default_rating,
-                    key=f"rating_{pid}"
+                    1,
+                    10,
+                    default_rating,
+                    key=f"rating_{pid}",
                 )
 
                 if st.button("별점 저장", key=f"rating_save_{pid}"):
                     ratings = load_ratings()
                     ratings = ratings[
                         ~(
-                            (ratings["from_user"] == user_id) &
-                            (ratings["to_user"] == pid)
+                            (ratings["from_user"] == user_id)
+                            & (ratings["to_user"] == pid)
                         )
                     ]
                     new_row = {
@@ -864,7 +890,10 @@ def show_guide_modal():
                 st.rerun()
     with center_col:
         dots = "".join("●" if i == step else "○" for i in range(total_steps))
-        st.markdown(f"<div style='text-align:center;color:#f18da8;'>{dots}</div>", unsafe_allow_html=True)
+        st.markdown(
+            f"<div style='text-align:center;color:#f18da8;'>{dots}</div>",
+            unsafe_allow_html=True,
+        )
     with next_col:
         if step < total_steps - 1:
             if st.button("다음 →", key="guide_next"):
@@ -875,7 +904,7 @@ def show_guide_modal():
                 st.session_state["guide_open"] = False
                 st.rerun()
 
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 # ------------------------------
@@ -977,6 +1006,18 @@ def main():
             border: 2px solid #f59ab3;
             box-shadow: 0 0 0 4px rgba(245, 154, 179, 0.25);
         }
+        /* 멀티셀렉트에서 선택된 태그(성격/외모 키워드 등) 색상 */
+        [data-baseweb="tag"] {
+            background-color: #ffe3f0;
+            border-radius: 999px;
+            color: #3d262c;
+            border: none;
+        }
+        /* 라디오/체크박스 핑크 동그라미 */
+        input[type="radio"],
+        input[type="checkbox"] {
+            accent-color: #f59ab3;
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -984,6 +1025,7 @@ def main():
 
     st.markdown('<div class="main-block">', unsafe_allow_html=True)
 
+    # hero 로고 영역
     st.markdown(
         """
         <div class="hero-card">
@@ -1015,14 +1057,13 @@ def main():
                 L 60 82
                 Z"
                 fill="url(#heartGrad)"/>
-              <!-- 좌우 반전된 S -->
+              <!-- S (좌우반전 없이 그대로) -->
               <text x="60" y="68"
                     text-anchor="middle"
                     font-size="38"
                     font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
                     fill="white"
-                    font-weight="700"
-                    transform="scale(-1,1) translate(-120,0)">
+                    font-weight="700">
                 S
               </text>
             </svg>
@@ -1036,7 +1077,6 @@ def main():
         """,
         unsafe_allow_html=True,
     )
-
 
     # 온보딩 가이드
     show_guide_modal()
@@ -1053,8 +1093,8 @@ def main():
         show_match_page()
     else:
         show_notifications_page()
-    st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 if __name__ == "__main__":
