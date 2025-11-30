@@ -984,7 +984,7 @@ def main():
 
     st.markdown('<div class="main-block">', unsafe_allow_html=True)
 
-       st.markdown(
+    st.markdown(
         """
         <div class="hero-card">
           <div class="hero-icon">
