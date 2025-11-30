@@ -34,6 +34,7 @@ def load_data():
 
     if os.path.exists(DATA_FILE):
         df = pd.read_csv(DATA_FILE)
+        # 새로 추가된 컬럼이 없으면 만들어 줌
         if "team_code" not in df.columns:
             df["team_code"] = ""
         return df
@@ -66,6 +67,7 @@ def save_ratings(df):
 
 
 def split_tags(val):
+    """세미콜론으로 저장된 문자열을 리스트로 바꾸는 헬퍼 함수"""
     if pd.isna(val):
         return []
     s = str(val).strip()
@@ -75,16 +77,23 @@ def split_tags(val):
 
 
 def get_user_manner_temperature(user_id: str) -> float:
+    """
+    매너온도 = (해당 유저에게 들어온 별점 평균) * 10
+    (별점 1~10점 → 10점 = 100°, 5점 = 50°)
+    """
     df = load_ratings()
     if df.empty:
         return 50.0
+
     user_ratings = df[df["to_user"] == user_id]["rating"]
     if len(user_ratings) == 0:
         return 50.0
-    return round(user_ratings.mean() * 10, 1)  # 1~10점 → 10배
+
+    return round(user_ratings.mean() * 10, 1)
 
 
 def get_prev(prev_row, col, default):
+    """이전에 저장된 설문이 있으면 그 값을 기본값으로 쓰는 헬퍼 함수"""
     if prev_row is None:
         return default
     try:
@@ -174,6 +183,7 @@ def calc_match_score(me, other):
     # 체형
     my_pref_body = split_tags(me["pref_body_type"])
     other_body = other["self_body_type"]
+
     if (not my_pref_body) or ("상관없음" in my_pref_body):
         score += 1
     else:
@@ -187,7 +197,7 @@ def calc_match_score(me, other):
     overlap1 = len(set(my_pref_p) & set(other_p))
     score += overlap1 * 3
 
-    # 외모
+    # 외모 (상관없음 처리)
     my_pref_a = split_tags(me["pref_appearance"])
     if (not my_pref_a) or ("상관없음" in my_pref_a):
         score += 1
@@ -195,7 +205,8 @@ def calc_match_score(me, other):
         if other_a in my_pref_a:
             score += 3
 
-    # ===== 상대가 원하는 조건 vs 내 실제 =====
+    # ===== 상대가 원하는 조건 vs 내 실제 (상호 매칭) =====
+
     if other["pref_min_age"] <= me["self_age"] <= other["pref_max_age"]:
         score += 8
     else:
@@ -248,7 +259,7 @@ def register_survey():
     default_id = st.session_state.get("user_id", "")
     user_id = st.text_input("닉네임 (로그인에 사용할 이름)", max_chars=30, value=default_id)
 
-    prev = None    # 기존 데이터
+    prev = None
     if user_id and user_id in df["user_id"].values:
         prev = df[df["user_id"] == user_id].iloc[0]
         st.success("기존 설문을 불러왔어요. 수정 후 다시 저장하면 업데이트됩니다.")
@@ -335,8 +346,17 @@ def register_survey():
     st.markdown("#### 나에 대한 정보")
 
     personality_options = [
-        "내향적", "외향적", "차분함", "활발함", "유머있음",
-        "논리적", "감성적", "리더형", "서포터형", "즉흥적", "계획적",
+        "내향적",
+        "외향적",
+        "차분함",
+        "활발함",
+        "유머있음",
+        "논리적",
+        "감성적",
+        "리더형",
+        "서포터형",
+        "즉흥적",
+        "계획적",
     ]
     appearance_base = ["강아지상", "고양이상", "여우상", "토끼상", "곰상", "사슴상", "공룡상", "기타"]
     body_type_options = ["저체중", "보통", "과체중"]
@@ -366,7 +386,9 @@ def register_survey():
             if self_body_type_default in body_type_options
             else 1,
         )
-        raw_mbti = st.text_input("MBTI (선택, 예: INFP)", max_chars=4, value=self_mbti_default)
+        raw_mbti = st.text_input(
+            "MBTI (선택, 예: INFP)", max_chars=4, value=self_mbti_default
+        )
         self_mbti = raw_mbti.upper()
 
     with col2:
@@ -412,12 +434,14 @@ def register_survey():
         )
         pref_min_age, pref_max_age = st.slider(
             "원하는 나이 범위",
-            10, 100,
+            10,
+            100,
             (pref_min_age_default, pref_max_age_default),
         )
         pref_min_height, pref_max_height = st.slider(
             "원하는 키 범위 (cm)",
-            130, 220,
+            130,
+            220,
             (pref_min_height_default, pref_max_height_default),
         )
 
@@ -463,7 +487,7 @@ def register_survey():
             return
 
         st.session_state["user_id"] = user_id
-        df = df[df["user_id"] != user_id]  # 기존 것 삭제 후 새로 저장
+        df = df[df["user_id"] != user_id]
 
         new_row = {
             "timestamp": datetime.now().isoformat(),
@@ -754,7 +778,8 @@ def show_notifications_page():
 
                 new_rating = st.slider(
                     "별점 선택",
-                    1, 10,
+                    1,
+                    10,
                     default_rating,
                     key=f"rating_{pid}",
                 )
@@ -891,9 +916,6 @@ def main():
     st.markdown(
         """
         <style>
-        :root {
-            --primary-color: #f59ab3;
-        }
         .stApp {
             background: linear-gradient(180deg, #fef8fb 0%, #ffffff 45%, #fdeff4 100%);
         }
@@ -975,10 +997,7 @@ def main():
             margin-bottom: 16px;
             border: 1px solid #f4c6db;
         }
-        /* 슬라이더 핑크 커스텀 */
-        [data-testid="stSlider"] div[data-baseweb="slider"] > div {
-            background-color: #f9b6cc;
-        }
+        /* 슬라이더 색상 커스텀 */
         [data-testid="stSlider"] div[data-baseweb="slider"] > div > div:nth-child(2) {
             background-color: #f59ab3;
         }
@@ -987,26 +1006,17 @@ def main():
             border: 2px solid #f59ab3;
             box-shadow: 0 0 0 4px rgba(245, 154, 179, 0.25);
         }
-        [data-testid="stSlider"] span {
-            color: #f59ab3;
-        }
-        /* 멀티셀렉트 태그 색상 */
+        /* 멀티셀렉트에서 선택된 태그(성격/외모 키워드 등) 색상 */
         [data-baseweb="tag"] {
             background-color: #ffe3f0;
             border-radius: 999px;
             color: #3d262c;
             border: none;
         }
-        /* 라디오 / 체크박스 핑크 동그라미 */
+        /* 라디오/체크박스 핑크 동그라미 */
         input[type="radio"],
         input[type="checkbox"] {
             accent-color: #f59ab3;
-        }
-        [data-testid="stRadio"] svg {
-            color: #f59ab3;
-        }
-        [data-testid="stRadio"] svg path {
-            fill: #f59ab3;
         }
         </style>
         """,
@@ -1021,14 +1031,17 @@ def main():
         <div class="hero-card">
           <div class="hero-icon">
             <svg width="80" height="80" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+              <!-- 바깥 둥근 사각형 -->
               <rect x="8" y="8" width="104" height="104" rx="26"
                     fill="#ffffff" stroke="#ffb7d5" stroke-width="4" />
+              <!-- 그라디언트 정의 -->
               <defs>
                 <linearGradient id="heartGrad" x1="0" y1="0" x2="1" y2="1">
                   <stop offset="0%" stop-color="#ff5f8d"/>
                   <stop offset="100%" stop-color="#ff8ec0"/>
                 </linearGradient>
               </defs>
+              <!-- 왼쪽 하트 -->
               <path d="
                 M60 36
                 C 55 28, 43 26, 36 33
@@ -1036,6 +1049,7 @@ def main():
                 L 60 82
                 Z"
                 fill="url(#heartGrad)"/>
+              <!-- 오른쪽 하트 -->
               <path d="
                 M60 36
                 C 65 28, 77 26, 84 33
@@ -1043,6 +1057,7 @@ def main():
                 L 60 82
                 Z"
                 fill="url(#heartGrad)"/>
+              <!-- S (좌우반전 없이 그대로) -->
               <text x="60" y="68"
                     text-anchor="middle"
                     font-size="38"
